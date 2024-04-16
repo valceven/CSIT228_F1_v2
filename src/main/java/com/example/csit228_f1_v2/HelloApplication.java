@@ -117,7 +117,25 @@ public class HelloApplication extends Application {
             }
         });
 
-        Scene scene = new Scene(grid, 700, 500, Color.BLACK);
+        Button btnRegister = new Button("Sign Up");
+        btnRegister.setFont(Font.font(40));
+        grid.add(btnRegister,2,3);
+
+        btnRegister.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                try{
+                    Parent p = FXMLLoader.load(getClass().getResource("register-page.fxml"));
+                    Scene s = new Scene(p);
+                    stage.setScene(s);
+                    stage.show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        Scene scene = new Scene(grid, 900, 700, Color.BLACK);
         stage.setScene(scene);
         scene.setFill(Color.CORNFLOWERBLUE);
         stage.show();

@@ -1,113 +1,109 @@
 package com.example.csit228_f1_v2;
 
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import org.w3c.dom.Text;
-
-import java.io.IOException;
 import java.sql.*;
+import java.util.Optional;
+import javafx.scene.control.Alert;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RegisterController {
-    public Button btnCreate,btnDelete,btnUpdate,getBtnDelete;
+    public TextField textFieldName;
+    public TextField textFieldEmail;
+    public TextField textFieldAddress;
+    public TextField textFieldUsername;
+
     public TextField textFieldId;
-
-    public RegisterController() throws IOException {
-    }
+    public PasswordField textFieldPassword;
 
     @FXML
-    protected void btnCreateClick(){
-        Connection c = MySQLConnection.getConnection();
-        String query = "CREATE TABLE IF NOT EXISTS accounts (" +
-                "id BIGINT PRIMARY KEY AUTO_INCREMENT," +
-                "name VARCHAR(50) NOT NULL," +
-                "email VARCHAR(100) NOT NULL)," +
-                "address VARCHAR(100) NOT NULL," +
-                "password VARCHAR(20) NOT NULL";
-        try{
-            Statement statement = c.createStatement();
-            statement.execute(query);
-            System.out.println("Table created successfully");
-        }catch (SQLException e){
-            e.printStackTrace();
-        }finally {
-            try{
-                c.close();
-            }catch (SQLException e){
-                throw new RuntimeException(e);
+    protected void btnUpdateClick() {
+        Optional<String> result = DialogUtils.showUpdateDialog("Update Record", "Enter ID to Update", "Please enter the ID:");
 
+        AtomicReference<Optional<String>> newName = new AtomicReference<>(Optional.empty());
+        AtomicReference<Optional<String>> newEmail = new AtomicReference<>(Optional.empty());
+        AtomicReference<Optional<String>> newAddress = new AtomicReference<>(Optional.empty());
+
+        result.ifPresent(id -> {
+            if (!id.isEmpty()) {
+                newName.set(DialogUtils.showInputDialog("Update Name", "Enter New Name", "Enter the new name:"));
+                newEmail.set(DialogUtils.showInputDialog("Update Email", "Enter New Email", "Enter the new email:"));
+                newAddress.set(DialogUtils.showInputDialog("Update Address", "Enter New Address", "Enter the new address:"));
+
+                newName.get().ifPresent(name -> {
+                    newEmail.get().ifPresent(email -> {
+                        newAddress.get().ifPresent(address -> {
+                            TableOps.update(id, name, email, address);
+                        });
+                    });
+                });
+            } else {
+                DialogUtils.showAlert(Alert.AlertType.WARNING, "Updating Failed", "ID is Empty", "Please enter a valid ID.");
             }
-        }
+        });
     }
 
-    @FXML
-    protected void btnUpdateClick(){
-        try(Connection c = MySQLConnection.getConnection();
-            PreparedStatement statement = c.prepareStatement(
-                    "UPDATE users SET id = ? WHERE id = ?"
-            )){
-            int newId = 2;
-            int id = 9;
-            statement.setInt(1,newId);
-            statement.setInt(2,id);
-            int rows = statement.executeUpdate();
-            System.out.println("Rows Updated: " + rows);
-            ResultSet res = statement.getResultSet();
-        }catch (SQLException e){
-            throw new RuntimeException(e);
-        }
-    }
 
     @FXML
     protected void btnReadClick() {
-        try (Connection c = MySQLConnection.getConnection();) {
-            Statement statement = c.createStatement();
-            String query = "SELECT * FROM users";
-            ResultSet res = statement.executeQuery(query);
-            while (res.next()) {
-                int id = res.getInt("id");
-                String name = res.getString("name");
-                String email = res.getString(3);
-                System.out.println("\nID: " + id + "\nName: " + name + "\nEmail: " + email);
+        Optional<String> result = DialogUtils.showInputDialog("Read Record", "Enter ID to Read", "Please enter the ID:");
+
+        result.ifPresent(id -> {
+            if (!id.isEmpty()) {
+                TableOps.read(id);
+            } else {
+                DialogUtils.showAlert(Alert.AlertType.WARNING, "Reading Failed", "ID is Empty", "Please enter a valid ID.");
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
     @FXML
     protected void btnDeleteClick() {
+        Optional<String> result = DialogUtils.showInputDialog("Delete Record", "Enter ID to Delete", "Please enter the ID:");
 
-        try (Connection c = MySQLConnection.getConnection();
-             PreparedStatement statement = c.prepareStatement(
-                     "DELETE FROM users WHERE id < ?"
-             )) {
-            int startId = 2;
-            statement.setInt(1,startId);
-            int rows = statement.executeUpdate();
-            System.out.println("Rows deleted: " + rows);
-        }catch(SQLException e){
-            throw new RuntimeException(e);
-        }
+        result.ifPresent(id -> {
+            if (!id.isEmpty()) {
+                if(TableOps.delete(id))
+                    DialogUtils.showAlert(Alert.AlertType.INFORMATION, "Delete Successful", "Record Deleted", "Record with ID " + id + " has been deleted.");
+            } else {
+                DialogUtils.showAlert(Alert.AlertType.WARNING, "Delete Failed", "ID is Empty", "Please enter a valid ID.");
+            }
+        });
     }
 
     @FXML
-    protected void btnSignInClick() {
+    protected void btnRegisterClick() {
+        if(textFieldEmail.getLength() == 0){
+            System.out.println("Please Enter Details");
+            return;
+        }
+        boolean success = false;
         try (Connection c = MySQLConnection.getConnection();
              PreparedStatement statement = c.prepareStatement(
-                     "INSERT INTO users (name, email) VALUES (? , ?)"
-             )){
-            String name = "Savel";
-            String email = "savelbolante@gmail.com";
+                     "INSERT INTO accounts (name, email, address) VALUES (?, ?, ?)"
+             )) {
+            String name = textFieldName.getText();
+            String email = textFieldEmail.getText();
+            String address = textFieldAddress.getText();
             statement.setString(1, name);
             statement.setString(2, email);
+            statement.setString(3, address);
             int rows = statement.executeUpdate();
+            if (rows != 0) {
+                success = true;
+            }
             System.out.println("Rows Inserted: " + rows);
-
-        }catch (SQLException e){
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        if (success) {
+            String username = textFieldUsername.getText();
+            String password = textFieldPassword.getText();
+            String hashPass = String.valueOf(password.hashCode());
+            TableOps.insert(username, hashPass);
+        }
     }
+
 }

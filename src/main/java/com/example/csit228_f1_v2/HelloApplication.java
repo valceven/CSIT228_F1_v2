@@ -21,6 +21,10 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class HelloApplication extends Application {
     @Override
@@ -29,6 +33,9 @@ public class HelloApplication extends Application {
 //        Scene scene = new Scene(fxmlLoader.load(), 320, 240);
 //        stage.setTitle("Hello!");
 //        stage.setScene(scene);
+
+        CreateTable.createAccountTable();
+        CreateTable.createUserTable();
 
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -105,13 +112,25 @@ public class HelloApplication extends Application {
         btnLogin.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                System.out.println("Hello");
-                try {
-                    Parent p = FXMLLoader.load(getClass().getResource("homepage.fxml"));
-                    Scene s = new Scene(p);
-                    stage.setScene(s);
-                    stage.show();
-                } catch (IOException e) {
+                String username = tfUsername.getText();
+                String password = String.valueOf(pfPassword.getText().hashCode());
+
+
+                try (Connection c = MySQLConnection.getConnection();
+                     PreparedStatement statement = c.prepareStatement("SELECT * FROM users WHERE username = ? AND password = ?")) {
+                    statement.setString(1, username);
+                    statement.setString(2, password);
+                    ResultSet resultSet = statement.executeQuery();
+
+                    if (resultSet.next()) {
+                        Parent p = FXMLLoader.load(getClass().getResource("homepage.fxml"));
+                        Scene s = new Scene(p);
+                        stage.setScene(s);
+                        stage.show();
+                    } else {
+                        DialogUtils.showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid Username or Password", "Please enter valid credentials.");
+                    }
+                } catch (SQLException | IOException e) {
                     e.printStackTrace();
                 }
             }
